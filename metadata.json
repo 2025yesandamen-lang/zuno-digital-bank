@@ -1,0 +1,6 @@
+{
+  "name": "ZUNO Digital Bank",
+  "description": "Next-generation digital banking platform engineered with double-entry ledger accounting, instant transfers, bills payments, high-yield savings, rule-based fraud detection, and regulatory compliance administration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
