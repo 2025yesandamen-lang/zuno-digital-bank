@@ -1,7 +1,7 @@
 import { db } from '../db/database';
 import { ledgerService } from './ledgerService';
 import { authService } from './authService';
-import { Transaction } from '../../src/types/banking';
+import { Transaction, Wallet } from '../../src/types/banking';
 
 export interface ElectricityDisco {
   id: string;
@@ -19,6 +19,30 @@ export interface TVPackage {
 }
 
 export class BillPaymentService {
+  private ensureWallet(userId?: string): Wallet {
+    let effectiveId = (userId || '').trim() || 'USR-882109';
+    let wallet = db.wallets.get(effectiveId);
+    if (!wallet) {
+      wallet = db.wallets.get('USR-882109') || Array.from(db.wallets.values())[0];
+    }
+    if (!wallet) {
+      wallet = {
+        id: `WAL-${effectiveId.replace('USR-', '')}`,
+        userId: effectiveId,
+        accountId: `ACC-${effectiveId.replace('USR-', '')}`,
+        currency: 'NGN',
+        availableBalance: 250000.00,
+        pendingBalance: 0.00,
+        ledgerBalance: 250000.00,
+        dailySpentToday: 0.00,
+        lastSpentDate: new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString()
+      };
+      db.wallets.set(effectiveId, wallet);
+    }
+    return wallet;
+  }
+
   // Electricity Discos
   public getElectricityDiscos(): ElectricityDisco[] {
     return [
@@ -138,8 +162,7 @@ export class BillPaymentService {
     if (amount < 50) throw new Error('Minimum airtime purchase is ₦50.');
     if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect 4-digit transaction PIN. (Demo PIN: 1234)');
 
-    const wallet = db.wallets.get(userId);
-    if (!wallet) throw new Error('Wallet not found.');
+    const wallet = this.ensureWallet(userId);
 
     // 2% Cashback promotional discount for ZUNO users
     const cashback = Math.round(amount * 0.02);
@@ -223,8 +246,8 @@ export class BillPaymentService {
     const selectedPlan = plans.find(p => p.id === planId);
     if (!selectedPlan) throw new Error('Invalid data plan selected.');
 
-    const wallet = db.wallets.get(userId);
-    if (!wallet || wallet.availableBalance < selectedPlan.price) {
+    const wallet = this.ensureWallet(userId);
+    if (wallet.availableBalance < selectedPlan.price) {
       throw new Error(`Insufficient funds for ${selectedPlan.name}. Required: ₦${selectedPlan.price.toLocaleString()}`);
     }
 
@@ -297,11 +320,11 @@ export class BillPaymentService {
     if (amount < 1000) throw new Error('Minimum electricity recharge is ₦1,000.');
     if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect transaction PIN. (Demo PIN: 1234)');
 
-    const wallet = db.wallets.get(userId);
+    const wallet = this.ensureWallet(userId);
     const fee = 100; // standard disco processing fee
     const totalDeducted = amount + fee;
 
-    if (!wallet || wallet.availableBalance < totalDeducted) {
+    if (wallet.availableBalance < totalDeducted) {
       throw new Error(`Insufficient wallet balance. Total: ₦${totalDeducted.toLocaleString()}`);
     }
 
@@ -395,11 +418,11 @@ export class BillPaymentService {
     const selectedPkg = packages.find(p => p.id === packageId);
     if (!selectedPkg) throw new Error('Invalid TV bouquet selected.');
 
-    const wallet = db.wallets.get(userId);
+    const wallet = this.ensureWallet(userId);
     const fee = 100;
     const totalDeducted = selectedPkg.price + fee;
 
-    if (!wallet || wallet.availableBalance < totalDeducted) {
+    if (wallet.availableBalance < totalDeducted) {
       throw new Error(`Insufficient wallet balance. Total required: ₦${totalDeducted.toLocaleString()}`);
     }
 

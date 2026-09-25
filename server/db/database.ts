@@ -234,6 +234,35 @@ export class ZunoDatabase {
     });
     this.users.set(adminUser.id, adminUser);
 
+    // Seed Admin Account & Wallet so P2P transfers and admin operations have an active ledger account
+    const adminAccount: BankAccount = {
+      id: 'ACC-ADMIN-01',
+      userId: adminUser.id,
+      accountNumber: '8099990000',
+      accountName: 'AMINA BELLO',
+      bankName: 'ZUNO Digital Bank',
+      bankCode: '090555',
+      tier: 'TIER_3',
+      currency: 'NGN',
+      status: 'ACTIVE',
+      createdAt: '2026-07-01T09:05:00.000Z'
+    };
+    this.accounts.set(adminAccount.id, adminAccount);
+
+    const adminWallet: Wallet = {
+      id: 'WAL-ADMIN-01',
+      userId: adminUser.id,
+      accountId: adminAccount.id,
+      currency: 'NGN',
+      availableBalance: 1000000.00,
+      pendingBalance: 0.00,
+      ledgerBalance: 1000000.00,
+      dailySpentToday: 0.00,
+      lastSpentDate: '2026-08-28',
+      updatedAt: '2026-08-28T08:00:00.000Z'
+    };
+    this.wallets.set(adminUser.id, adminWallet);
+
     // 6. Seed Beneficiaries for Demo User
     this.beneficiaries.set(demoUser.id, [
       {

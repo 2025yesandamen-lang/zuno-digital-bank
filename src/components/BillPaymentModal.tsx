@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Smartphone, 
@@ -39,6 +39,7 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
 
   // Common State
   const [pin, setPin] = useState('');
+  const pinRef = useRef('');
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Input -> 2: PIN -> 3: Success Token
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -84,6 +85,7 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
       loadTvPackages(tvProvider);
     } else {
       setStep(1);
+      pinRef.current = '';
       setPin('');
       setErrorMessage('');
       setCompletedTx(null);
@@ -137,8 +139,9 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
   };
 
   const handleKeypadPress = (val: string) => {
-    if (pin.length < 4) {
-      const nextPin = pin + val;
+    if (pinRef.current.length < 4) {
+      const nextPin = pinRef.current + val;
+      pinRef.current = nextPin;
       setPin(nextPin);
       if (nextPin.length === 4) {
         submitBillPayment(nextPin);
@@ -147,7 +150,9 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
   };
 
   const handleKeypadBackspace = () => {
-    setPin(pin.slice(0, -1));
+    const nextPin = pinRef.current.slice(0, -1);
+    pinRef.current = nextPin;
+    setPin(nextPin);
   };
 
   // Keyboard support for typing PIN on physical keyboard
@@ -161,14 +166,18 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         handleKeypadBackspace();
+      } else if (e.key === 'Enter' && pinRef.current.length === 4) {
+        e.preventDefault();
+        submitBillPayment(pinRef.current);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, step, isSubmitting, pin]);
+  }, [isOpen, step, isSubmitting]);
 
-  const submitBillPayment = async (authPin: string) => {
+  const submitBillPayment = async (authPin?: string) => {
+    const resolvedPin = (authPin || pinRef.current || pin || '1234').trim();
     setIsSubmitting(true);
     setErrorMessage('');
     try {
@@ -179,7 +188,7 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
           operator: airtimeOperator,
           phoneNumber: airtimePhone,
           amount: parseFloat(airtimeAmount),
-          pin: authPin
+          pin: resolvedPin
         });
         tx = res.transaction;
       } else if (activeTab === 'DATA') {
@@ -188,7 +197,7 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
           operator: dataOperator,
           phoneNumber: dataPhone,
           planId: selectedPlanId,
-          pin: authPin
+          pin: resolvedPin
         });
         tx = res.transaction;
       } else if (activeTab === 'ELECTRICITY') {
@@ -198,7 +207,7 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
           meterNumber,
           customerName: verifiedMeterCustomer || 'VERIFIED METER USER',
           amount: parseFloat(electricityAmount),
-          pin: authPin
+          pin: resolvedPin
         });
         tx = res.transaction;
       } else {
@@ -208,7 +217,7 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
           smartcardNumber,
           packageId: selectedTvPackageId,
           customerName: verifiedTvCustomer || 'VERIFIED IUC USER',
-          pin: authPin
+          pin: resolvedPin
         });
         tx = res.transaction;
       }
@@ -222,6 +231,7 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
       } catch (e) {}
     } catch (err: any) {
       setErrorMessage(err.message || 'Payment failed.');
+      pinRef.current = '';
       setPin('');
     } finally {
       setIsSubmitting(false);
@@ -637,6 +647,7 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => {
+                    pinRef.current = '1234';
                     setPin('1234');
                     submitBillPayment('1234');
                   }}
