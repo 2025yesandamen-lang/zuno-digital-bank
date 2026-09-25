@@ -136,7 +136,7 @@ export class BillPaymentService {
     const { userId, operator, phoneNumber, amount, pin } = params;
 
     if (amount < 50) throw new Error('Minimum airtime purchase is ₦50.');
-    if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect 4-digit transaction PIN.');
+    if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect 4-digit transaction PIN. (Demo PIN: 1234)');
 
     const wallet = db.wallets.get(userId);
     if (!wallet) throw new Error('Wallet not found.');
@@ -217,7 +217,7 @@ export class BillPaymentService {
   }): Promise<Transaction> {
     const { userId, operator, phoneNumber, planId, pin } = params;
 
-    if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect transaction PIN.');
+    if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect transaction PIN. (Demo PIN: 1234)');
 
     const plans = this.getDataPlans(operator);
     const selectedPlan = plans.find(p => p.id === planId);
@@ -295,7 +295,7 @@ export class BillPaymentService {
     const { userId, discoCode, meterNumber, customerName, amount, pin } = params;
 
     if (amount < 1000) throw new Error('Minimum electricity recharge is ₦1,000.');
-    if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect transaction PIN.');
+    if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect transaction PIN. (Demo PIN: 1234)');
 
     const wallet = db.wallets.get(userId);
     const fee = 100; // standard disco processing fee
@@ -389,7 +389,7 @@ export class BillPaymentService {
   }): Promise<Transaction> {
     const { userId, provider, smartcardNumber, packageId, customerName, pin } = params;
 
-    if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect transaction PIN.');
+    if (!authService.verifyPin(userId, pin)) throw new Error('Incorrect transaction PIN. (Demo PIN: 1234)');
 
     const packages = this.getTVPackages(provider);
     const selectedPkg = packages.find(p => p.id === packageId);

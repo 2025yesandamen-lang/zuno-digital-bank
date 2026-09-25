@@ -381,7 +381,9 @@ export const CardsHub: React.FC<CardsHubProps> = ({ currentUser, onRefreshData }
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Enter 4-Digit Transaction PIN</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Enter 4-Digit Transaction PIN <span className="text-slate-400 font-normal">(Demo: 1234)</span>
+                </label>
                 <input
                   type="password"
                   maxLength={4}

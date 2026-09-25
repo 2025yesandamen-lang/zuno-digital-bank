@@ -210,7 +210,9 @@ export class TransferService {
     pin: string;
     idempotencyKey?: string;
   }): Promise<Transaction> {
-    const { senderUserId, recipientIdentifier, amount, narration, pin, idempotencyKey } = params;
+    const senderUserId = params.senderUserId || (params as any).userId;
+    const pin = params.pin || (params as any).authPin || (params as any).transactionPin;
+    const { recipientIdentifier, amount, narration, idempotencyKey } = params;
 
     // 1. Idempotency Guard
     if (idempotencyKey && db.idempotencyStore.has(idempotencyKey)) {
@@ -221,7 +223,7 @@ export class TransferService {
 
     // 2. PIN Validation
     if (!authService.verifyPin(senderUserId, pin)) {
-      throw new Error('Incorrect 4-digit transaction PIN.');
+      throw new Error('Invalid 4-digit transaction PIN. (Demo PIN: 1234)');
     }
 
     // 3. Sender Wallet and Balance Verification
@@ -395,7 +397,9 @@ export class TransferService {
     saveAsBeneficiary?: boolean;
     idempotencyKey?: string;
   }): Promise<Transaction> {
-    const { userId, bankCode, accountNumber, accountName, amount, narration, pin, saveAsBeneficiary, idempotencyKey } = params;
+    const userId = params.userId || (params as any).senderUserId || (params as any).senderId;
+    const pin = params.pin || (params as any).authPin || (params as any).transactionPin;
+    const { bankCode, accountNumber, accountName, amount, narration, saveAsBeneficiary, idempotencyKey } = params;
 
     // 1. Idempotency Guard
     if (idempotencyKey && db.idempotencyStore.has(idempotencyKey)) {
@@ -406,7 +410,7 @@ export class TransferService {
 
     // 2. PIN Validation
     if (!authService.verifyPin(userId, pin)) {
-      throw new Error('Invalid 4-digit transaction PIN.');
+      throw new Error('Invalid 4-digit transaction PIN. (Demo PIN: 1234)');
     }
 
     const wallet = db.wallets.get(userId);

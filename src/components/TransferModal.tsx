@@ -163,6 +163,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   };
 
   const handleProceedToPin = () => {
+    setErrorMessage('');
     setStep(3);
   };
 
@@ -179,6 +180,24 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   const handleKeypadBackspace = () => {
     setPin(pin.slice(0, -1));
   };
+
+  // Keyboard support for typing PIN on physical keyboard
+  useEffect(() => {
+    if (!isOpen || step !== 3 || isSubmitting) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        handleKeypadPress(e.key);
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        handleKeypadBackspace();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, step, isSubmitting, pin]);
 
   const submitTransfer = async (authPin: string) => {
     setIsSubmitting(true);
@@ -224,9 +243,15 @@ export const TransferModal: React.FC<TransferModalProps> = ({
       } catch (e) {}
 
     } catch (err: any) {
-      setErrorMessage(err.message || 'Transfer failed. Please check your PIN or limit.');
+      const msg = err.message || 'Transfer failed. Please check your PIN or limit.';
+      setErrorMessage(msg);
       setPin('');
-      setStep(2); // Go back to confirm
+      // Keep user on PIN step if error is PIN-related so they can quickly re-enter
+      if (msg.toLowerCase().includes('pin')) {
+        setStep(3);
+      } else {
+        setStep(2); // Go back to confirm
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -524,8 +549,15 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 <div className="text-xs text-slate-400 mt-1">Enter your 4-digit transaction PIN (Demo PIN: 1234)</div>
               </div>
 
+              {errorMessage && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-center gap-2 max-w-xs mx-auto">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
               {/* PIN Dots */}
-              <div className="flex justify-center gap-3 my-4">
+              <div className="flex justify-center gap-3 my-2">
                 {[0, 1, 2, 3].map(idx => (
                   <div
                     key={idx}
@@ -536,6 +568,22 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                     }`}
                   />
                 ))}
+              </div>
+
+              {/* Quick Fill Demo PIN helper button */}
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    setPin('1234');
+                    submitTransfer('1234');
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition-colors flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  Quick Fill Demo PIN (1234)
+                </button>
               </div>
 
               {/* Keypad Grid */}

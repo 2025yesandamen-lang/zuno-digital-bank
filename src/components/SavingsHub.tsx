@@ -372,7 +372,9 @@ export const SavingsHub: React.FC<SavingsHubProps> = ({ currentUser, wallet, onR
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">4-Digit Transaction PIN</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  4-Digit Transaction PIN <span className="text-slate-400 font-normal">(Demo: 1234)</span>
+                </label>
                 <input
                   type="password"
                   maxLength={4}
@@ -432,7 +434,9 @@ export const SavingsHub: React.FC<SavingsHubProps> = ({ currentUser, wallet, onR
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">4-Digit Transaction PIN</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  4-Digit Transaction PIN <span className="text-slate-400 font-normal">(Demo: 1234)</span>
+                </label>
                 <input
                   type="password"
                   maxLength={4}

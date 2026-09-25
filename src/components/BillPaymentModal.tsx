@@ -150,6 +150,24 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
     setPin(pin.slice(0, -1));
   };
 
+  // Keyboard support for typing PIN on physical keyboard
+  useEffect(() => {
+    if (!isOpen || step !== 2 || isSubmitting) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        handleKeypadPress(e.key);
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        handleKeypadBackspace();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, step, isSubmitting, pin]);
+
   const submitBillPayment = async (authPin: string) => {
     setIsSubmitting(true);
     setErrorMessage('');
@@ -600,7 +618,7 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
               </div>
 
               {/* PIN Dots */}
-              <div className="flex justify-center gap-3 my-4">
+              <div className="flex justify-center gap-3 my-2">
                 {[0, 1, 2, 3].map(idx => (
                   <div
                     key={idx}
@@ -611,6 +629,22 @@ export const BillPaymentModal: React.FC<BillPaymentModalProps> = ({
                     }`}
                   />
                 ))}
+              </div>
+
+              {/* Quick Fill Demo PIN helper button */}
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    setPin('1234');
+                    submitBillPayment('1234');
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition-colors flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  Quick Fill Demo PIN (1234)
+                </button>
               </div>
 
               {/* Keypad Grid */}
