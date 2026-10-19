@@ -29,7 +29,17 @@ export const TransactionReceiptModal: React.FC<TransactionReceiptModalProps> = (
     window.print();
   };
 
-  const isCredit = transaction.type === 'DEPOSIT' || transaction.type === 'SAVINGS_WITHDRAW';
+  const getCurrencySymbol = (curr?: string) => {
+    switch (curr) {
+      case 'USD': return '$';
+      case 'GBP': return '£';
+      case 'EUR': return '€';
+      default: return '₦';
+    }
+  };
+
+  const isCredit = transaction.direction === 'CREDIT' || ['DEPOSIT', 'DEPOSIT_MOCK', 'INTERNATIONAL_RECEIPT', 'SAVINGS_WITHDRAW', 'BUSINESS_INVOICE_PAYMENT'].includes(transaction.type);
+  const sym = getCurrencySymbol(transaction.currency);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
@@ -60,9 +70,9 @@ export const TransactionReceiptModal: React.FC<TransactionReceiptModalProps> = (
 
           {/* Amount Box */}
           <div className="text-center py-2">
-            <div className="text-[11px] text-slate-500 uppercase font-semibold">Transaction Amount</div>
+            <div className="text-[11px] text-slate-500 uppercase font-semibold">Transaction Amount ({transaction.currency || 'NGN'})</div>
             <div className={`text-3xl font-black font-mono mt-1 ${isCredit ? 'text-emerald-600' : 'text-slate-900'}`}>
-              {isCredit ? '+' : '-'}₦{(transaction?.amount ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+              {isCredit ? '+' : '-'}{sym}{(transaction?.amount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold mt-2">
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -74,7 +84,12 @@ export const TransactionReceiptModal: React.FC<TransactionReceiptModalProps> = (
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 text-xs">
             <div className="flex justify-between">
               <span className="text-slate-500">Transaction Type</span>
-              <span className="font-bold text-slate-900 uppercase">{transaction.type.replace('_', ' ')}</span>
+              <span className="font-bold text-slate-900 uppercase">{transaction.type.replace(/_/g, ' ')}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span className="text-slate-500">Currency</span>
+              <span className="font-bold text-slate-900 uppercase">{transaction.currency || 'NGN'}</span>
             </div>
 
             {transaction.counterpartyName && (
@@ -100,7 +115,7 @@ export const TransactionReceiptModal: React.FC<TransactionReceiptModalProps> = (
 
             <div className="flex justify-between">
               <span className="text-slate-500">Fee Charged</span>
-              <span className="font-mono text-slate-800">₦{transaction.fee.toFixed(2)}</span>
+              <span className="font-mono text-slate-800">{sym}{Number(transaction.fee ?? 0).toFixed(2)}</span>
             </div>
 
             <div className="flex justify-between">

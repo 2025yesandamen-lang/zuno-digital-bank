@@ -23,6 +23,8 @@ interface NavbarProps {
   onOpenAuth: () => void;
   onOpenKYC: () => void;
   onSwitchUser: (userId: string) => void;
+  activeAppTab?: 'DASHBOARD' | 'BUSINESS' | 'SAVINGS' | 'CARDS' | 'TRANSACTIONS';
+  onSelectAppTab?: (tab: 'DASHBOARD' | 'BUSINESS' | 'SAVINGS' | 'CARDS' | 'TRANSACTIONS') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -33,84 +35,93 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNotifications,
   onOpenAuth,
   onOpenKYC,
-  onSwitchUser
+  onSwitchUser,
+  activeAppTab,
+  onSelectAppTab
 }) => {
   const [userDropdownOpen, setUserDropdownOpen] = React.useState(false);
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0F172A] text-white shadow-lg border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-[#0F172A] text-white shadow-md border-b border-slate-800/80">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3">
+        {/* Brand Logo & Mode */}
+        <div className="flex items-center gap-6">
           <div 
-            onClick={() => setCurrentView('APP')}
+            onClick={() => { setCurrentView('APP'); onSelectAppTab?.('DASHBOARD'); }}
             className="cursor-pointer flex items-center gap-3 group"
           >
-            <div className="w-10 h-10 bg-blue-500 hover:bg-blue-400 rounded-lg flex items-center justify-center font-bold text-xl text-white shadow-sm transition-transform group-hover:scale-105">
+            <div className="w-9 h-9 bg-blue-600 hover:bg-blue-500 rounded-xl flex items-center justify-center font-bold text-lg text-white shadow-sm transition-transform group-hover:scale-105">
               Z
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-base sm:text-lg font-bold tracking-tight text-white">ZUNO DIGITAL BANK</span>
-              </div>
-              <span className="text-[10px] text-blue-300 font-mono tracking-widest uppercase">Core Banking Engine v1.0.4</span>
+              <span className="text-base font-bold tracking-tight text-white leading-tight">ZUNO</span>
+              <span className="text-[10px] text-slate-400 font-medium">Digital Bank</span>
             </div>
           </div>
+
+          {/* Wise / Revolut Personal ↔ Business Mode Switcher */}
+          {currentView === 'APP' && onSelectAppTab && (
+            <div className="hidden sm:flex items-center p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+              <button
+                type="button"
+                id="btn-nav-mode-personal"
+                onClick={() => onSelectAppTab('DASHBOARD')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  activeAppTab !== 'BUSINESS'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>Personal</span>
+              </button>
+              <button
+                type="button"
+                id="btn-nav-mode-business"
+                onClick={() => onSelectAppTab('BUSINESS')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  activeAppTab === 'BUSINESS'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>Business (SME)</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* System Status Pill (from Professional Polish theme) */}
-        <div className="hidden xl:flex items-center space-x-2 bg-slate-800/90 px-3 py-1.5 rounded-full border border-slate-700">
-          <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-          <span className="text-xs font-medium text-slate-200">System Ready: Ledger Balanced 100%</span>
-        </div>
-
-        {/* Mode Switcher Navigation */}
-        <nav className="hidden md:flex items-center p-1 bg-slate-900/90 rounded-xl border border-slate-800">
+        {/* View Switcher: App vs Admin vs Architecture */}
+        <nav className="hidden lg:flex items-center gap-1 text-xs text-slate-400">
           <button
-            id="nav-banking-app-tab"
             onClick={() => setCurrentView('APP')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              currentView === 'APP'
-                ? 'bg-blue-600 text-white shadow-sm font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              currentView === 'APP' ? 'text-white font-bold bg-slate-800/80' : 'hover:text-slate-200 hover:bg-slate-850'
             }`}
           >
-            <Building2 className="w-3.5 h-3.5" />
-            ZUNO Banking App
+            Banking App
           </button>
-
           <button
-            id="nav-admin-console-tab"
             onClick={() => setCurrentView('ADMIN')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              currentView === 'ADMIN'
-                ? 'bg-blue-600 text-white shadow-sm font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              currentView === 'ADMIN' ? 'text-white font-bold bg-slate-800/80' : 'hover:text-slate-200 hover:bg-slate-850'
             }`}
           >
-            <Shield className="w-3.5 h-3.5" />
-            Operations & Ledger Console
+            Operations & Ledger
           </button>
-
           <button
-            id="nav-blueprint-tab"
             onClick={() => setCurrentView('ARCHITECTURE')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              currentView === 'ARCHITECTURE'
-                ? 'bg-blue-600 text-white shadow-sm font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              currentView === 'ARCHITECTURE' ? 'text-white font-bold bg-slate-800/80' : 'hover:text-slate-200 hover:bg-slate-850'
             }`}
           >
-            <Cpu className="w-3.5 h-3.5" />
-            Master Architecture & ERD
+            Architecture
           </button>
         </nav>
 
         {/* Right Action Icons & Profile */}
-        <div className="flex items-center gap-3">
-          
+        <div className="flex items-center gap-2.5">
           {/* Notification Button */}
           <button
             id="btn-notifications-trigger"
@@ -237,7 +248,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           }`}
         >
           <Cpu className="w-3.5 h-3.5" />
-          Blueprint
+          Architecture
         </button>
       </div>
     </header>

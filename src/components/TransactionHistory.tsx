@@ -30,10 +30,12 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
 
   const filtered = transactions.filter(tx => {
     // Type Filter
-    if (filterType === 'TRANSFERS' && !['INTERNAL_TRANSFER', 'EXTERNAL_TRANSFER'].includes(tx.type)) return false;
-    if (filterType === 'BILLS' && !['AIRTIME_PURCHASE', 'DATA_PURCHASE', 'ELECTRICITY_BILL', 'TV_SUBSCRIPTION'].includes(tx.type)) return false;
+    if (filterType === 'TRANSFERS' && !['INTERNAL_TRANSFER', 'EXTERNAL_TRANSFER', 'TRANSFER_INTERNAL', 'TRANSFER_EXTERNAL', 'TRANSFER_INTERNATIONAL'].includes(tx.type)) return false;
+    if (filterType === 'BILLS' && !['AIRTIME_PURCHASE', 'DATA_PURCHASE', 'ELECTRICITY_BILL', 'TV_SUBSCRIPTION', 'AIRTIME', 'DATA', 'ELECTRICITY', 'TV'].includes(tx.type)) return false;
     if (filterType === 'SAVINGS' && !['SAVINGS_DEPOSIT', 'SAVINGS_WITHDRAW'].includes(tx.type)) return false;
-    if (filterType === 'DEPOSIT' && tx.type !== 'DEPOSIT') return false;
+    if (filterType === 'DEPOSIT' && tx.type !== 'DEPOSIT' && tx.type !== 'DEPOSIT_MOCK' && tx.type !== 'INTERNATIONAL_RECEIPT') return false;
+    if (filterType === 'INTERNATIONAL' && !['INTERNATIONAL_RECEIPT', 'TRANSFER_INTERNATIONAL', 'CURRENCY_EXCHANGE'].includes(tx.type)) return false;
+    if (filterType === 'BUSINESS' && !['BUSINESS_INVOICE_PAYMENT'].includes(tx.type)) return false;
 
     // Search Query
     if (searchQuery && searchQuery.trim()) {
@@ -41,21 +43,43 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
       const matchRef = (tx.reference || '').toLowerCase().includes(q);
       const matchName = (tx.counterpartyName || '').toLowerCase().includes(q);
       const matchNarration = (tx.narration || '').toLowerCase().includes(q);
-      return matchRef || matchName || matchNarration;
+      const matchCurrency = (tx.currency || '').toLowerCase().includes(q);
+      return matchRef || matchName || matchNarration || matchCurrency;
     }
     return true;
   });
 
+  const getCurrencySymbol = (curr?: string) => {
+    switch (curr) {
+      case 'USD': return '$';
+      case 'GBP': return '£';
+      case 'EUR': return '€';
+      default: return '₦';
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'DEPOSIT':
+      case 'DEPOSIT_MOCK':
+      case 'INTERNATIONAL_RECEIPT':
         return <ArrowDownLeft className="w-4 h-4 text-emerald-600" />;
+      case 'CURRENCY_EXCHANGE':
+        return <ArrowUpRight className="w-4 h-4 text-blue-600" />;
+      case 'TRANSFER_INTERNATIONAL':
+        return <ArrowUpRight className="w-4 h-4 text-purple-600" />;
+      case 'BUSINESS_INVOICE_PAYMENT':
+        return <ArrowDownLeft className="w-4 h-4 text-indigo-600" />;
+      case 'AIRTIME':
       case 'AIRTIME_PURCHASE':
         return <Smartphone className="w-4 h-4 text-cyan-600" />;
+      case 'DATA':
       case 'DATA_PURCHASE':
         return <Smartphone className="w-4 h-4 text-blue-600" />;
+      case 'ELECTRICITY':
       case 'ELECTRICITY_BILL':
         return <Zap className="w-4 h-4 text-amber-600" />;
+      case 'TV':
       case 'TV_SUBSCRIPTION':
         return <Tv className="w-4 h-4 text-purple-600" />;
       case 'SAVINGS_DEPOSIT':
@@ -73,7 +97,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Transaction History</h2>
-          <p className="text-xs text-slate-400">Audited double-entry record of all inflows & outflows</p>
+          <p className="text-xs text-slate-400">Audited double-entry record of all multi-currency inflows & outflows</p>
         </div>
 
         {/* Search Bar */}
@@ -83,7 +107,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search reference, recipient..."
+            placeholder="Search reference, recipient, currency..."
             className="w-full sm:w-64 bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
@@ -94,6 +118,8 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
         {[
           { id: 'ALL', label: 'All Transactions' },
           { id: 'TRANSFERS', label: 'Transfers' },
+          { id: 'INTERNATIONAL', label: 'FX & Global' },
+          { id: 'BUSINESS', label: 'Business Invoicing' },
           { id: 'BILLS', label: 'Bills & Utilities' },
           { id: 'SAVINGS', label: 'Savings Vault' },
           { id: 'DEPOSIT', label: 'Inflows' },
@@ -120,7 +146,8 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
       ) : (
         <div className="divide-y divide-slate-100">
           {filtered.map(tx => {
-            const isCredit = tx.type === 'DEPOSIT' || tx.type === 'SAVINGS_WITHDRAW';
+            const isCredit = tx.direction === 'CREDIT' || ['DEPOSIT', 'DEPOSIT_MOCK', 'INTERNATIONAL_RECEIPT', 'SAVINGS_WITHDRAW', 'BUSINESS_INVOICE_PAYMENT'].includes(tx.type);
+            const sym = getCurrencySymbol(tx.currency);
             return (
               <div
                 key={tx.id}
@@ -133,7 +160,12 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                   </div>
                   <div>
                     <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                      <span>{tx.counterpartyName || tx.narration || tx.type.replace('_', ' ')}</span>
+                      <span>{tx.counterpartyName || tx.narration || tx.type.replace(/_/g, ' ')}</span>
+                      {tx.currency && tx.currency !== 'NGN' && (
+                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                          {tx.currency}
+                        </span>
+                      )}
                       {tx.status === 'PENDING' && (
                         <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 font-bold px-1.5 py-0.2 rounded flex items-center gap-1">
                           <Clock className="w-2.5 h-2.5" /> Pending
@@ -155,7 +187,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
 
                 <div className="text-right">
                   <div className={`font-mono text-sm font-bold ${isCredit ? 'text-emerald-600' : 'text-slate-900'}`}>
-                    {isCredit ? '+' : '-'}₦{(tx?.amount ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                    {isCredit ? '+' : '-'}{sym}{(tx?.amount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <button className="text-[10px] text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity font-semibold flex items-center gap-1 justify-end ml-auto">
                     <FileText className="w-3 h-3" />

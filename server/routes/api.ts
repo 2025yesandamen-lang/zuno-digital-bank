@@ -7,6 +7,7 @@ import { transferService } from '../services/transferService';
 import { billPaymentService } from '../services/billPaymentService';
 import { savingsAndCardService } from '../services/savingsAndCardService';
 import { adminService } from '../services/adminService';
+import { multiCurrencyService } from '../services/multiCurrencyService';
 
 export const apiRouter = Router();
 
@@ -70,6 +71,8 @@ apiRouter.get('/users/me', handleAsync(async (req, res) => {
   const profile = db.profiles.get(userId);
   const kyc = kycService.getKYCProfile(userId);
   const wallet = db.wallets.get(userId);
+  const allWallets = db.getAllUserWallets(userId);
+  const businessProfile = multiCurrencyService.getBusinessProfile(userId);
   const account = Array.from(db.accounts.values()).find(a => a.userId === userId);
 
   res.json({
@@ -78,15 +81,112 @@ apiRouter.get('/users/me', handleAsync(async (req, res) => {
     profile,
     kyc,
     wallet,
+    wallets: allWallets,
+    businessProfile,
     account
   });
 }));
 
 apiRouter.get('/wallet/balance', handleAsync(async (req, res) => {
   const userId = (req.query.userId as string) || 'USR-882109';
-  const wallet = db.wallets.get(userId);
-  if (!wallet) return res.status(404).json({ success: false, error: 'Wallet not found.' });
-  res.json({ success: true, wallet });
+  const currency = (req.query.currency as any) || 'NGN';
+  const wallet = db.getCurrencyWallet(userId, currency);
+  const allWallets = db.getAllUserWallets(userId);
+  res.json({ success: true, wallet, wallets: allWallets });
+}));
+
+// ---------------- MULTI-CURRENCY & FX ROUTES ----------------
+
+apiRouter.get('/currency/wallets', handleAsync(async (req, res) => {
+  const userId = (req.query.userId as string) || 'USR-882109';
+  const wallets = db.getAllUserWallets(userId);
+  res.json({ success: true, wallets });
+}));
+
+apiRouter.get('/currency/rates', (req, res) => {
+  res.json({
+    success: true,
+    benchmarkNgn: {
+      USD: 1485.50,
+      GBP: 1920.00,
+      EUR: 1610.00
+    },
+    spreadFeePcnt: 0.5,
+    timestamp: new Date().toISOString()
+  });
+});
+
+apiRouter.post('/currency/quote', handleAsync(async (req, res) => {
+  const quote = multiCurrencyService.getQuote(req.body);
+  res.json({ success: true, quote });
+}));
+
+apiRouter.post('/currency/convert', handleAsync(async (req, res) => {
+  const result = multiCurrencyService.convertCurrency(req.body);
+  res.json({ success: true, ...result, message: 'Currency converted successfully.' });
+}));
+
+apiRouter.get('/currency/receiving-details', handleAsync(async (req, res) => {
+  const userId = (req.query.userId as string) || 'USR-882109';
+  const currency = (req.query.currency as any) || 'USD';
+  const details = multiCurrencyService.getReceivingDetails(userId, currency);
+  res.json({ success: true, details });
+}));
+
+apiRouter.post('/currency/receive-webhook', handleAsync(async (req, res) => {
+  const result = multiCurrencyService.simulateIncomingPayment(req.body);
+  res.json({ 
+    success: true, 
+    ...result, 
+    message: `Inward ${req.body.currency || 'USD'} international payment credited directly without NGN conversion.` 
+  });
+}));
+
+apiRouter.post('/transfers/international', handleAsync(async (req, res) => {
+  const result = multiCurrencyService.transferInternational(req.body);
+  res.json({ 
+    success: true, 
+    ...result, 
+    message: 'International transfer submitted successfully.' 
+  });
+}));
+
+// ---------------- BUSINESS SUITE & INVOICING ROUTES ----------------
+
+apiRouter.get('/business/profile', handleAsync(async (req, res) => {
+  const userId = (req.query.userId as string) || 'USR-882109';
+  const profile = multiCurrencyService.getBusinessProfile(userId);
+  res.json({ success: true, profile });
+}));
+
+apiRouter.post('/business/profile', handleAsync(async (req, res) => {
+  const userId = (req.body.userId as string) || 'USR-882109';
+  const profile = multiCurrencyService.saveBusinessProfile(userId, req.body);
+  res.json({ success: true, profile, message: 'Business profile updated successfully.' });
+}));
+
+apiRouter.get('/business/payment-links', handleAsync(async (req, res) => {
+  const userId = (req.query.userId as string) || 'USR-882109';
+  const links = multiCurrencyService.getPaymentLinks(userId);
+  res.json({ success: true, paymentLinks: links });
+}));
+
+apiRouter.post('/business/payment-links', handleAsync(async (req, res) => {
+  const link = multiCurrencyService.createPaymentLink(req.body);
+  res.status(201).json({ success: true, paymentLink: link, message: 'Digital payment link created.' });
+}));
+
+apiRouter.post('/business/payment-links/pay', handleAsync(async (req, res) => {
+  const { linkId, payerName, paymentMethod } = req.body;
+  if (!linkId) {
+    return res.status(400).json({ success: false, error: 'Payment link ID or reference is required.' });
+  }
+  const result = multiCurrencyService.payPaymentLink(linkId, payerName, paymentMethod);
+  res.json({ 
+    success: true, 
+    ...result, 
+    message: result.alreadySettled ? 'This invoice has already been settled.' : 'Payment link settled.' 
+  });
 }));
 
 // ---------------- KYC ROUTES ----------------

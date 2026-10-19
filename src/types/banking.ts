@@ -1,9 +1,15 @@
+export type SupportedCurrency = 'NGN' | 'USD' | 'GBP' | 'EUR';
+
 export type KYCStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW';
-export type KYCTier = 'TIER_0' | 'TIER_1' | 'TIER_2' | 'TIER_3';
+export type KYCTier = 'TIER_0' | 'TIER_1' | 'TIER_2' | 'TIER_3' | 'BUSINESS_VERIFIED';
 export type TransactionStatus = 'INITIATED' | 'PROCESSING' | 'PENDING' | 'SUCCESSFUL' | 'FAILED' | 'REVERSED' | 'REQUIRES_REVIEW';
 export type TransactionType = 
   | 'TRANSFER_INTERNAL' 
   | 'TRANSFER_EXTERNAL' 
+  | 'TRANSFER_INTERNATIONAL'
+  | 'CURRENCY_EXCHANGE'
+  | 'INTERNATIONAL_RECEIPT'
+  | 'BUSINESS_INVOICE_PAYMENT'
   | 'AIRTIME' 
   | 'DATA' 
   | 'ELECTRICITY' 
@@ -294,3 +300,76 @@ export interface SystemMetrics {
   isLedgerBalanced: boolean;
   fraudAlertsCount: number;
 }
+
+export interface BusinessProfile {
+  id: string;
+  userId: string;
+  tradingName: string;
+  businessCategory: string;
+  description: string;
+  registrationType: 'UNREGISTERED_SOLE_TRADER' | 'CAC_REGISTERED_BN' | 'CAC_LIMITED_COMPANY';
+  rcNumber?: string;
+  tin?: string;
+  supportEmail: string;
+  supportPhone: string;
+  businessAddress: string;
+  status: 'ACTIVE_UNVERIFIED' | 'PENDING_REVIEW' | 'VERIFIED_BUSINESS';
+  website?: string;
+  invoiceCount?: number;
+  totalCollectedNgn?: number;
+  totalCollectedUsd?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentLink {
+  id: string;
+  businessId: string;
+  userId: string;
+  title: string;
+  customerName: string;
+  customerEmail?: string;
+  amount: number;
+  currency: SupportedCurrency;
+  description: string;
+  reference: string;
+  status: 'ACTIVE' | 'PAID' | 'EXPIRED';
+  shareUrl: string;
+  paidAt?: string;
+  paymentMethod?: string;
+  createdAt: string;
+}
+
+export interface ExchangeQuote {
+  fromCurrency: SupportedCurrency;
+  toCurrency: SupportedCurrency;
+  fromAmount: number;
+  toAmount: number;
+  exchangeRate: number;
+  inverseRate: number;
+  fee: number;
+  feeCurrency: SupportedCurrency;
+  expiresAt: number;
+  quoteId: string;
+}
+
+export interface InternationalReceivingDetails {
+  currency: SupportedCurrency;
+  currencyName: string;
+  symbol: string;
+  bankName: string;
+  bankAddress: string;
+  accountNumber: string;
+  beneficiaryName: string;
+  beneficiaryAddress: string;
+  routingNumber?: string; // ACH
+  wireRoutingNumber?: string; // Fedwire
+  swiftBic?: string;
+  sortCode?: string; // GBP
+  iban?: string; // EUR
+  paymentInstructions: string[];
+  eligibleNetworks: string[];
+  depositFee: string;
+  settlementSpeed: string;
+}
+

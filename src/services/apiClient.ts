@@ -41,8 +41,45 @@ export const api = {
 
   // User & Wallet
   getUserData: (userId?: string) => fetchApi<any>(`/users/me${userId ? `?userId=${userId}` : ''}`),
-  getWalletBalance: (userId?: string) => fetchApi<any>(`/wallet/balance${userId ? `?userId=${userId}` : ''}`),
+  getWalletBalance: (userId?: string, currency?: string) => fetchApi<any>(`/wallet/balance?userId=${userId || 'USR-882109'}&currency=${currency || 'NGN'}`),
   depositMock: (payload: { userId: string; amount: number; sourceName: string }) => fetchApi<any>('/wallet/deposit-mock', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+
+  // Multi-Currency & International
+  getCurrencyWallets: (userId?: string) => fetchApi<any>(`/currency/wallets${userId ? `?userId=${userId}` : ''}`),
+  getExchangeRates: () => fetchApi<any>('/currency/rates'),
+  getExchangeQuote: (payload: { from: string; to: string; amount: number }) => fetchApi<any>('/currency/quote', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  convertCurrency: (payload: { userId: string; fromCurrency: string; toCurrency: string; amount: number; pin: string }) => fetchApi<any>('/currency/convert', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  getReceivingDetails: (userId?: string, currency: string = 'USD') => fetchApi<any>(`/currency/receiving-details?userId=${userId || 'USR-882109'}&currency=${currency}`),
+  simulateIncomingPayment: (payload: { userId: string; currency: string; amount: number; senderName: string; senderBank?: string; paymentRail?: string; narration?: string }) => fetchApi<any>('/currency/receive-webhook', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  transferInternational: (payload: any) => fetchApi<any>('/transfers/international', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+
+  // Business Suite & Invoicing
+  getBusinessProfile: (userId?: string) => fetchApi<any>(`/business/profile${userId ? `?userId=${userId}` : ''}`),
+  saveBusinessProfile: (payload: any) => fetchApi<any>('/business/profile', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  getPaymentLinks: (userId?: string) => fetchApi<any>(`/business/payment-links${userId ? `?userId=${userId}` : ''}`),
+  createPaymentLink: (payload: any) => fetchApi<any>('/business/payment-links', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  payPaymentLink: (payload: { linkId: string; payerName?: string; paymentMethod?: string }) => fetchApi<any>('/business/payment-links/pay', {
     method: 'POST',
     body: JSON.stringify(payload)
   }),

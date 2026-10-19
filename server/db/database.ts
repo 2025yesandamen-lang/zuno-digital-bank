@@ -17,7 +17,10 @@ import {
   FraudEvent,
   AppNotification,
   SupportTicket,
-  AuditLog
+  AuditLog,
+  BusinessProfile,
+  PaymentLink,
+  SupportedCurrency
 } from '../../src/types/banking';
 
 const hashSecret = (val: string, salt: string) =>
@@ -29,7 +32,10 @@ export class ZunoDatabase {
   profiles: Map<string, UserProfile> = new Map();
   kycProfiles: Map<string, KYCProfile> = new Map();
   accounts: Map<string, BankAccount> = new Map();
-  wallets: Map<string, Wallet> = new Map();
+  wallets: Map<string, Wallet> = new Map(); // Primary NGN wallet for backward compatibility
+  multiCurrencyWallets: Map<string, Map<SupportedCurrency, Wallet>> = new Map(); // userId -> currency -> Wallet
+  businessProfiles: Map<string, BusinessProfile> = new Map(); // userId -> BusinessProfile
+  paymentLinks: Map<string, PaymentLink> = new Map(); // id -> PaymentLink
   ledgerAccounts: Map<string, LedgerAccount> = new Map();
   ledgerTransactions: LedgerTransaction[] = [];
   ledgerEntries: LedgerEntry[] = [];
@@ -66,10 +72,20 @@ export class ZunoDatabase {
       { id: 'LA-1001', code: '1001-CASH-SETTLEMENT', name: 'Interbank Settlement Pool (NIBSS)', type: 'ASSET', balance: 500000000, currency: 'NGN' },
       { id: 'LA-1002', code: '1002-VTU-ESCROW', name: 'VTU & Telco Float Pool', type: 'ASSET', balance: 50000000, currency: 'NGN' },
       { id: 'LA-1003', code: '1003-UTILITY-ESCROW', name: 'Discos & Utility Escrow', type: 'ASSET', balance: 50000000, currency: 'NGN' },
+      { id: 'LA-1004', code: '1004-USD-SETTLEMENT', name: 'USD International Settlement Pool (CFSB/JPMorgan)', type: 'ASSET', balance: 2500000, currency: 'USD' },
+      { id: 'LA-1005', code: '1005-GBP-SETTLEMENT', name: 'GBP International Settlement Pool (ClearBank UK)', type: 'ASSET', balance: 1500000, currency: 'GBP' },
+      { id: 'LA-1006', code: '1006-EUR-SETTLEMENT', name: 'EUR International Settlement Pool (Banking Circle)', type: 'ASSET', balance: 1800000, currency: 'EUR' },
       { id: 'LA-2001', code: '2001-CUST-LIABILITY', name: 'Customer Wallets (Total Deposits)', type: 'LIABILITY', balance: 500000000, currency: 'NGN' },
       { id: 'LA-2002', code: '2002-SAVINGS-LIABILITY', name: 'Customer Fixed & Target Savings', type: 'LIABILITY', balance: 50000000, currency: 'NGN' },
+      { id: 'LA-2003', code: '2003-USD-CUST-LIABILITY', name: 'USD Customer Wallets Liability', type: 'LIABILITY', balance: 2500000, currency: 'USD' },
+      { id: 'LA-2004', code: '2004-GBP-CUST-LIABILITY', name: 'GBP Customer Wallets Liability', type: 'LIABILITY', balance: 1500000, currency: 'GBP' },
+      { id: 'LA-2005', code: '2005-EUR-CUST-LIABILITY', name: 'EUR Customer Wallets Liability', type: 'LIABILITY', balance: 1800000, currency: 'EUR' },
+      { id: 'LA-2003-EUR', code: '2003-EUR-CUST-LIABILITY', name: 'EUR Customer Wallets Liability (Compatibility Alias)', type: 'LIABILITY', balance: 1800000, currency: 'EUR' },
+      { id: 'LA-2003-GBP', code: '2003-GBP-CUST-LIABILITY', name: 'GBP Customer Wallets Liability (Compatibility Alias)', type: 'LIABILITY', balance: 1500000, currency: 'GBP' },
+      { id: 'LA-2003-NGN', code: '2003-NGN-CUST-LIABILITY', name: 'NGN Customer Wallets Liability (Compatibility Alias)', type: 'LIABILITY', balance: 500000000, currency: 'NGN' },
       { id: 'LA-3001', code: '3001-EQUITY-CAPITAL', name: 'ZUNO Equity Capital Reserve', type: 'EQUITY', balance: 50000000, currency: 'NGN' },
       { id: 'LA-4001', code: '4001-FEE-INCOME', name: 'Transfer & Platform Fee Revenue', type: 'REVENUE', balance: 0, currency: 'NGN' },
+      { id: 'LA-4002', code: '4002-FX-REVENUE', name: 'FX & Cross-Border Fee Revenue', type: 'REVENUE', balance: 0, currency: 'NGN' },
       { id: 'LA-5001', code: '5001-INTEREST-EXPENSE', name: 'Savings Interest Paid', type: 'EXPENSE', balance: 0, currency: 'NGN' },
     ];
 
@@ -211,6 +227,122 @@ export class ZunoDatabase {
     };
     this.wallets.set(demoUser.id, demoWallet);
 
+    // Multi-currency balances for Demo User (John Doe)
+    const demoMultiWallets = new Map<SupportedCurrency, Wallet>();
+    demoMultiWallets.set('NGN', demoWallet);
+    demoMultiWallets.set('USD', {
+      id: 'WAL-USD-882109',
+      userId: demoUser.id,
+      accountId: 'ACC-USD-882109',
+      currency: 'USD',
+      availableBalance: 1450.00,
+      pendingBalance: 0.00,
+      ledgerBalance: 1450.00,
+      dailySpentToday: 0.00,
+      lastSpentDate: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString()
+    });
+    demoMultiWallets.set('GBP', {
+      id: 'WAL-GBP-882109',
+      userId: demoUser.id,
+      accountId: 'ACC-GBP-882109',
+      currency: 'GBP',
+      availableBalance: 820.00,
+      pendingBalance: 0.00,
+      ledgerBalance: 820.00,
+      dailySpentToday: 0.00,
+      lastSpentDate: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString()
+    });
+    demoMultiWallets.set('EUR', {
+      id: 'WAL-EUR-882109',
+      userId: demoUser.id,
+      accountId: 'ACC-EUR-882109',
+      currency: 'EUR',
+      availableBalance: 950.00,
+      pendingBalance: 0.00,
+      ledgerBalance: 950.00,
+      dailySpentToday: 0.00,
+      lastSpentDate: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString()
+    });
+    this.multiCurrencyWallets.set(demoUser.id, demoMultiWallets);
+
+    // Seed Business Profile for John Doe (Eligible Unregistered Sole Trader & Freelancer)
+    const demoBusiness: BusinessProfile = {
+      id: 'BIZ-882109',
+      userId: demoUser.id,
+      tradingName: 'JD Digital Labs & Global Consulting',
+      businessCategory: 'Technology & Consulting Services',
+      description: 'Cross-border cloud engineering, fintech integrations, and UX architecture for international clients.',
+      registrationType: 'UNREGISTERED_SOLE_TRADER',
+      rcNumber: 'BN-882109-NG',
+      tin: '24910291-0001',
+      supportEmail: 'billing@jddigital.ng',
+      supportPhone: '+2348012345678',
+      businessAddress: '14 Admiralty Way, Lekki Phase 1, Lagos',
+      status: 'VERIFIED_BUSINESS',
+      website: 'https://jddigital.ng',
+      invoiceCount: 3,
+      totalCollectedNgn: 1450000,
+      totalCollectedUsd: 3850,
+      createdAt: '2026-08-05T10:00:00.000Z',
+      updatedAt: new Date().toISOString()
+    };
+    this.businessProfiles.set(demoUser.id, demoBusiness);
+
+    // Seed Demo Payment Links / Invoices
+    const link1: PaymentLink = {
+      id: 'PLINK-001',
+      businessId: demoBusiness.id,
+      userId: demoUser.id,
+      title: 'Full-Stack UI/UX Design System Retainer',
+      customerName: 'Acme Global Ventures LLC',
+      customerEmail: 'finance@acmeglobal.com',
+      amount: 1200.00,
+      currency: 'USD',
+      description: 'Monthly sprint fee for banking design token synchronization and user testing.',
+      reference: 'INV-2026-08-01',
+      status: 'PAID',
+      shareUrl: 'https://pay.zunobank.ng/pay/INV-2026-08-01',
+      paidAt: '2026-08-20T14:15:00.000Z',
+      paymentMethod: 'US ACH Transfer',
+      createdAt: '2026-08-15T11:00:00.000Z'
+    };
+    const link2: PaymentLink = {
+      id: 'PLINK-002',
+      businessId: demoBusiness.id,
+      userId: demoUser.id,
+      title: 'API Gateway & Security Architecture Audit',
+      customerName: 'Fintech Europe B.V.',
+      customerEmail: 'invoices@fintecheurope.eu',
+      amount: 650.00,
+      currency: 'EUR',
+      description: 'Audit report and penetration testing certificate for NIP and SEPA rails.',
+      reference: 'INV-2026-08-02',
+      status: 'ACTIVE',
+      shareUrl: 'https://pay.zunobank.ng/pay/INV-2026-08-02',
+      createdAt: '2026-08-25T09:30:00.000Z'
+    };
+    const link3: PaymentLink = {
+      id: 'PLINK-003',
+      businessId: demoBusiness.id,
+      userId: demoUser.id,
+      title: 'Microservices Cloud Infrastructure Setup',
+      customerName: 'Apex Logistics Nigeria Ltd',
+      customerEmail: 'accounts@apexlogistics.ng',
+      amount: 450000.00,
+      currency: 'NGN',
+      description: 'Kubernetes cluster setup and automated double-entry ledger integration.',
+      reference: 'INV-2026-08-03',
+      status: 'ACTIVE',
+      shareUrl: 'https://pay.zunobank.ng/pay/INV-2026-08-03',
+      createdAt: '2026-08-26T14:00:00.000Z'
+    };
+    this.paymentLinks.set(link1.id, link1);
+    this.paymentLinks.set(link2.id, link2);
+    this.paymentLinks.set(link3.id, link3);
+
     // 5. Seed Admin User
     const adminUser: User = {
       id: 'USR-ADMIN-01',
@@ -262,6 +394,46 @@ export class ZunoDatabase {
       updatedAt: '2026-08-28T08:00:00.000Z'
     };
     this.wallets.set(adminUser.id, adminWallet);
+
+    const adminMultiWallets = new Map<SupportedCurrency, Wallet>();
+    adminMultiWallets.set('NGN', adminWallet);
+    adminMultiWallets.set('USD', {
+      id: 'WAL-USD-ADMIN-01',
+      userId: adminUser.id,
+      accountId: 'ACC-USD-ADMIN-01',
+      currency: 'USD',
+      availableBalance: 25000.00,
+      pendingBalance: 0.00,
+      ledgerBalance: 25000.00,
+      dailySpentToday: 0.00,
+      lastSpentDate: '2026-08-28',
+      updatedAt: '2026-08-28T08:00:00.000Z'
+    });
+    adminMultiWallets.set('GBP', {
+      id: 'WAL-GBP-ADMIN-01',
+      userId: adminUser.id,
+      accountId: 'ACC-GBP-ADMIN-01',
+      currency: 'GBP',
+      availableBalance: 12000.00,
+      pendingBalance: 0.00,
+      ledgerBalance: 12000.00,
+      dailySpentToday: 0.00,
+      lastSpentDate: '2026-08-28',
+      updatedAt: '2026-08-28T08:00:00.000Z'
+    });
+    adminMultiWallets.set('EUR', {
+      id: 'WAL-EUR-ADMIN-01',
+      userId: adminUser.id,
+      accountId: 'ACC-EUR-ADMIN-01',
+      currency: 'EUR',
+      availableBalance: 18000.00,
+      pendingBalance: 0.00,
+      ledgerBalance: 18000.00,
+      dailySpentToday: 0.00,
+      lastSpentDate: '2026-08-28',
+      updatedAt: '2026-08-28T08:00:00.000Z'
+    });
+    this.multiCurrencyWallets.set(adminUser.id, adminMultiWallets);
 
     // 6. Seed Beneficiaries for Demo User
     this.beneficiaries.set(demoUser.id, [
@@ -535,6 +707,59 @@ export class ZunoDatabase {
       ipAddress: '127.0.0.1',
       timestamp: new Date(Date.now() - 86400000).toISOString()
     });
+  }
+
+  public getCurrencyWallet(userId: string, currency: SupportedCurrency = 'NGN'): Wallet {
+    let userMap = this.multiCurrencyWallets.get(userId);
+    if (!userMap) {
+      userMap = new Map();
+      this.multiCurrencyWallets.set(userId, userMap);
+    }
+    let wallet = userMap.get(currency);
+    if (!wallet) {
+      if (currency === 'NGN' && this.wallets.has(userId)) {
+        wallet = this.wallets.get(userId)!;
+      } else {
+        wallet = {
+          id: `WAL-${currency}-${userId.replace('USR-', '')}`,
+          userId,
+          accountId: `ACC-${currency}-${userId.replace('USR-', '')}`,
+          currency,
+          availableBalance: currency === 'USD' ? 500.00 : currency === 'GBP' ? 250.00 : currency === 'EUR' ? 300.00 : 250000.00,
+          pendingBalance: 0.00,
+          ledgerBalance: currency === 'USD' ? 500.00 : currency === 'GBP' ? 250.00 : currency === 'EUR' ? 300.00 : 250000.00,
+          dailySpentToday: 0.00,
+          lastSpentDate: new Date().toISOString().split('T')[0],
+          updatedAt: new Date().toISOString()
+        };
+      }
+      userMap.set(currency, wallet);
+    }
+    if (currency === 'NGN') {
+      this.wallets.set(userId, wallet);
+    }
+    return wallet;
+  }
+
+  public getAllUserWallets(userId: string): Record<SupportedCurrency, Wallet> {
+    const currencies: SupportedCurrency[] = ['NGN', 'USD', 'GBP', 'EUR'];
+    const result: Partial<Record<SupportedCurrency, Wallet>> = {};
+    for (const c of currencies) {
+      result[c] = this.getCurrencyWallet(userId, c);
+    }
+    return result as Record<SupportedCurrency, Wallet>;
+  }
+
+  public setCurrencyWallet(userId: string, currency: SupportedCurrency, wallet: Wallet): void {
+    let userMap = this.multiCurrencyWallets.get(userId);
+    if (!userMap) {
+      userMap = new Map();
+      this.multiCurrencyWallets.set(userId, userMap);
+    }
+    userMap.set(currency, wallet);
+    if (currency === 'NGN') {
+      this.wallets.set(userId, wallet);
+    }
   }
 }
 
